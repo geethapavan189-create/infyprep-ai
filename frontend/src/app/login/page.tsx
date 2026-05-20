@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { auth, googleProvider, isConfigured } from '@/lib/firebase';
+import { auth, googleProvider, isConfigured, getFirebaseAuth } from '@/lib/firebase';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
   sendPasswordResetEmail,
   updateProfile,
+  GoogleAuthProvider,
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -25,17 +26,18 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isConfigured || !auth) {
+    const firebaseAuth = auth || getFirebaseAuth();
+    if (!isConfigured || !firebaseAuth) {
       toast.error('Firebase not configured. Add your API keys to .env.local');
       return;
     }
     setLoading(true);
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(firebaseAuth, email, password);
         toast.success('Welcome back!');
       } else {
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
         await updateProfile(cred.user, { displayName: name });
         toast.success('Account created successfully!');
       }
@@ -47,12 +49,14 @@ export default function LoginPage() {
   };
 
   const handleGoogle = async () => {
-    if (!isConfigured || !auth || !googleProvider) {
+    const firebaseAuth = auth || getFirebaseAuth();
+    if (!isConfigured || !firebaseAuth) {
       toast.error('Firebase not configured. Add your API keys to .env.local');
       return;
     }
     try {
-      await signInWithPopup(auth, googleProvider);
+      const provider = googleProvider || new GoogleAuthProvider();
+      await signInWithPopup(firebaseAuth, provider);
       toast.success('Logged in with Google!');
       router.push('/dashboard');
     } catch (error: any) {
@@ -65,12 +69,13 @@ export default function LoginPage() {
       toast.error('Enter your email first');
       return;
     }
-    if (!isConfigured || !auth) {
+    const firebaseAuth = auth || getFirebaseAuth();
+    if (!isConfigured || !firebaseAuth) {
       toast.error('Firebase not configured');
       return;
     }
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(firebaseAuth, email);
       toast.success('Password reset email sent!');
       setShowReset(false);
     } catch (error: any) {

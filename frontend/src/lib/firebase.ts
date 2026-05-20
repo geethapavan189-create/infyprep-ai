@@ -11,14 +11,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
 };
 
-const isConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.includes('YOUR_');
+export const isConfigured = !!(firebaseConfig.apiKey && !firebaseConfig.apiKey.includes('YOUR_'));
 
+// Initialize Firebase immediately (works on both server and client)
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
 
-if (isConfigured && typeof window !== 'undefined') {
+if (isConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     auth = getAuth(app);
@@ -29,4 +30,19 @@ if (isConfigured && typeof window !== 'undefined') {
   }
 }
 
-export { app, auth, db, googleProvider, isConfigured };
+// Helper to get auth instance (ensures it's initialized)
+export function getFirebaseAuth(): Auth | null {
+  if (auth) return auth;
+  if (isConfigured) {
+    try {
+      const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+      auth = getAuth(firebaseApp);
+      return auth;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export { app, auth, db, googleProvider };

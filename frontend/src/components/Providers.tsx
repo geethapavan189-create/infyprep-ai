@@ -2,8 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { useStore } from '@/store/useStore';
-import { isConfigured } from '@/lib/firebase';
+import { isConfigured, getFirebaseAuth } from '@/lib/firebase';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,7 +13,7 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const { darkMode } = useStore();
+  const { darkMode, setUser } = useStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,41 +23,42 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [darkMode]);
 
   useEffect(() => {
-    if (isConfigured) {
-      // Dynamic import to avoid SSR issues
-      import('firebase/auth').then(({ onAuthStateChanged }) => {
-        import('@/lib/firebase').then(({ auth }) => {
-          if (auth) {
-            const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-              if (firebaseUser) {
-                try {
-                  const { authAPI } = await import('@/lib/api');
-                  const res = await authAPI.register({
-                    uid: firebaseUser.uid,
-                    email: firebaseUser.email,
-                    displayName: firebaseUser.displayName,
-                    photoURL: firebaseUser.photoURL,
-                  });
-                  useStore.getState().setUser(res.data.user);
-                } catch {
-                  useStore.getState().setUser(null);
-                }
-              } else {
-                useStore.getState().setUser(null);
-              }
-              setLoading(false);
-            });
-            return () => unsubscribe();
-          } else {
-            setLoading(false);
-          }
-        });
-      });
-    } else {
-      // No Firebase config - run in demo mode
+    if (!isConfigured) {
       setLoading(false);
+      return;
     }
-  }, []);
+
+    const firebaseAuth = getFirebaseAuth();
+    if (!firebaseAuth) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Set basic user info from Firebase Auth directly
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+          photoURL: firebaseUser.photoURL,
+          role: 'student',
+          xp: 0,
+          streak: 0,
+          badges: [],
+          solvedQuestions: [],
+          bookmarks: [],
+          mockTestScores: [],
+          codingSubmissions: [],
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [setUser]);
 
   if (loading) {
     return (

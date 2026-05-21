@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { codeAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { getChapterData } from '@/data/pythonData';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -68,8 +69,8 @@ export default function PythonChapterPage() {
 
         {/* Notes */}
         {activeTab === 'notes' && (
-          <div className="card prose dark:prose-invert max-w-none">
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">{data.notes}</div>
+          <div className="card max-w-none">
+            <MarkdownRenderer content={data.notes} />
           </div>
         )}
 
